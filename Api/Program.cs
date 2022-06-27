@@ -1,17 +1,15 @@
-using Api.Data;
-using Microsoft.EntityFrameworkCore;
+using Api.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
-});
+builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddControllers();
 
 // Import cors service.
 builder.Services.AddCors();
+
+builder.Services.AddIdentityServices(builder.Configuration);
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -33,23 +31,9 @@ app.UseCors(x => x.AllowAnyHeader()
                   .AllowAnyMethod()
                   .WithOrigins("https://localhost:4200"));
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-// Create scope, to seed database on app startup (If database is empty.)
-using var scope = app.Services.CreateScope();
-var services = scope.ServiceProvider;
-try
-{
-    var context = services.GetRequiredService<AppDbContext>();
-    await context.Database.MigrateAsync();
-    await Seed.SeedUserData(context);
-}
-catch (Exception ex)
-{
-    var logger = services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "An error occured during the migration");
-}
 
 app.Run();
